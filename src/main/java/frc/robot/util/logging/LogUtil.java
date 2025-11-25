@@ -1,0 +1,34 @@
+package frc.robot.util.logging;
+
+import edu.wpi.first.units.Measure;
+import edu.wpi.first.units.Unit;
+import org.littletonrobotics.junction.Logger;
+
+public class LogUtil {
+  public static void Log(String key, Measure<?> value) {
+    Logger.recordOutput(
+        key + toSuffix(value.baseUnit().symbol()), (double) value.baseUnitMagnitude());
+  }
+
+  public static <U extends Unit> void Log(String key, Measure<U> value, U unit) {
+    Logger.recordOutput(key + toSuffix(unit.symbol()), (double) value.in(unit));
+  }
+
+  public static <U extends Unit> void Log(String key, double value, U unit) {
+    Logger.recordOutput(key + toSuffix(unit.symbol()), value);
+  }
+
+  public static void Log(String key, double value, String unit) {
+    Logger.recordOutput(key + toSuffix(unit), value);
+  }
+
+  public static String toSuffix(String symbol) {
+    return "_"
+        + symbol
+            .replace("u", "µ")
+            .replace("*", "·")
+            .replace('K', 'k')
+            .replace("/", " ̸ ")
+            .replace("<?>", "value");
+  }
+}
