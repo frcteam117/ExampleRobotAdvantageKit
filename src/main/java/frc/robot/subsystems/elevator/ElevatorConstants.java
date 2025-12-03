@@ -17,9 +17,6 @@ import static edu.wpi.first.units.Units.Meters;
 import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.MetersPerSecondPerSecond;
 
-import com.revrobotics.spark.ClosedLoopSlot;
-import com.revrobotics.spark.config.ClosedLoopConfig.FeedbackSensor;
-import com.revrobotics.spark.config.MAXMotionConfig.MAXMotionPositionMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.units.measure.Distance;
@@ -27,60 +24,49 @@ import edu.wpi.first.units.measure.LinearAcceleration;
 import edu.wpi.first.units.measure.LinearVelocity;
 
 public class ElevatorConstants {
-  public static final String name = "Elevator";
+    public static final String name = "Elevator";
 
-  // Mechanism limits
-  public static final LinearVelocity maxVelocity = MetersPerSecond.of(2);
-  public static final LinearAcceleration maxAcceleration = MetersPerSecondPerSecond.of(6);
-  public static final Distance maxPosition = Meters.of(3);
-  public static final Distance minPosition = Meters.of(0);
+    // Mechanism limits
+    public static final LinearVelocity maxVelocity = MetersPerSecond.of(2);
+    public static final LinearAcceleration maxAcceleration = MetersPerSecondPerSecond.of(6);
+    public static final Distance maxPosition = Meters.of(3);
+    public static final Distance minPosition = Meters.of(0);
 
-  // Mechanism 2d config
-  public static final double mechanismWidthMax = 1.7;
-  public static final double mechanismHeightMax = 3.35;
+    // Mechanism 2d config
+    public static final double mechanismWidthMax = 1.7;
+    public static final double mechanismHeightMax = 3.35;
 
-  // Device CAN IDs
-  public static final int LeaderCanId = 10;
-  public static final int FollowerCanId = 11;
+    // Device CAN IDs
+    public static final int LeaderCanId = 10;
+    public static final int FollowerCanId = 11;
 
-  // Motor configuration
-  public static final int currentLimit = 15;
-  public static final boolean leftInverted = false;
-  public static final boolean rightInverted = true;
-  public static final DCMotor gearbox = DCMotor.getNEO(2);
-  public static final SparkMaxConfig motorConfig = new SparkMaxConfig();
+    // Motor configuration
+    public static final double rotationsperMeter = 8;
+    public static final int currentLimit = 15;
+    public static final boolean leftInverted = false;
+    public static final boolean rightInverted = true;
+    public static final DCMotor gearbox = DCMotor.getNEO(2);
+    public static final SparkMaxConfig motorConfig = new SparkMaxConfig();
 
-  // Velocity PID configuration
-  public static final double realP = 0.0;
-  public static final double realI = 0.0;
-  public static final double realD = 0.0;
-  public static final double realS = 0.0;
-  public static final double realV = 0.1;
-  public static final double realA = 0.227;
-  public static final double realG = 0;
+    // Velocity PID configuration
+    public static final double realP = 0.0;
+    public static final double realI = 0.0;
+    public static final double realD = 0.0;
+    public static final double realS = 0.0;
+    public static final double realV = 0.1;
+    public static final double realA = 0.227;
+    public static final double realG = 0;
 
-  public static final double simP = 1;
-  public static final double simI = 0.0;
-  public static final double simD = 0.0;
-  public static final double simS = 0.0;
-  public static final double simV = 0.05;
-  public static final double simA = 0.001;
-  public static final double simG = 0.0098;
+    public static final double simP = 1;
+    public static final double simI = 0.0;
+    public static final double simD = 0.0;
+    public static final double simS = 0.0;
+    public static final double simV = 0.05;
+    public static final double simA = 0.001;
+    public static final double simG = 0.0098;
 
-  static {
-    motorConfig
-        .smartCurrentLimit(20, 40)
-        .voltageCompensation(12.0)
-        .closedLoop
-        .feedbackSensor(FeedbackSensor.kPrimaryEncoder)
-        // Set PID values for position control
-        .pidf(simP, simI, simD, 0.0, ClosedLoopSlot.kSlot0)
-        .maxMotion
-        // Set MAXMotion parameters for position control
-        .maxVelocity(maxVelocity.in(MetersPerSecond))
-        .maxAcceleration(maxAcceleration.in(MetersPerSecondPerSecond))
-        .allowedClosedLoopError(0.0005)
-        .positionMode(MAXMotionPositionMode.kMAXMotionTrapezoidal, ClosedLoopSlot.kSlot0);
-    motorConfig.encoder.positionConversionFactor(1).velocityConversionFactor(1.0 / 60.0);
-  }
+    static {
+        motorConfig.smartCurrentLimit(20, 40).voltageCompensation(12.0);
+        motorConfig.encoder.positionConversionFactor(1.0).velocityConversionFactor(1.0 / 60.0);
+    }
 }

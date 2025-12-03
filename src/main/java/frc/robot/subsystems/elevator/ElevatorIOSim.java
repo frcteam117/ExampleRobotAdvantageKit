@@ -16,88 +16,75 @@ package frc.robot.subsystems.elevator;
 import static edu.wpi.first.units.Units.Amps;
 import static edu.wpi.first.units.Units.Meters;
 import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.Rotations;
+import static edu.wpi.first.units.Units.RotationsPerSecond;
 import static edu.wpi.first.units.Units.Volts;
 import static frc.robot.subsystems.elevator.ElevatorConstants.*;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.ElevatorFeedforward;
 import edu.wpi.first.math.controller.PIDController;
-import edu.wpi.first.units.DistanceUnit;
-import edu.wpi.first.units.LinearVelocityUnit;
+import edu.wpi.first.units.measure.Distance;
+import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj.simulation.ElevatorSim;
-import frc.robot.util.motionProfiling.ProfileController.ProfileState;
 
 public class ElevatorIOSim implements ElevatorIO {
-  // Simulator
-  private ElevatorSim sim =
-      new ElevatorSim(
-          simV, simA, gearbox, minPosition.in(Meters), maxPosition.in(Meters), true, 0.0, 0.0, 0.0);
+    // Simulator
+    private ElevatorSim sim =
+            new ElevatorSim(
+                    simV,
+                    simA,
+                    gearbox,
+                    minPosition.in(Meters),
+                    maxPosition.in(Meters),
+                    true,
+                    0.0,
+                    0.0,
+                    0.0);
 
-  // Motion profiling
-  private final ElevatorFeedforward feedforward =
-      new ElevatorFeedforward(simS, simG, simV, simA, 0.02);
-  private final PIDController pid = new PIDController(simP, 0.0, simD);
+    // Motion profiling
+    private final ElevatorFeedforward feedforward =
+            new ElevatorFeedforward(simS, simG, simV, simA, 0.02);
+    private final PIDController pid = new PIDController(simP, simI, simD);
 
-  // Variables
-  private boolean closedLoop = false;
-  private double motorVoltage = 0.0;
-  private double nextVelocityMetersPerSecond;
-  private double lastNextPositionMeters;
+    // Variables
+    private double motorVoltage = 0.0;
+    private double lastNextPositionMeters;
 
-  @Override
-  public void updateState(ElevatorIOState ioState) {
-    if (closedLoop) {
-      motorVoltage =
-          feedforward.calculateWithVelocities(
-                  sim.getVelocityMetersPerSecond(), nextVelocityMetersPerSecond)
-              + pid.calculate(sim.getPositionMeters(), lastNextPositionMeters);
+    @Override
+    public void updateState(ElevatorIOState ioState) {
+        // Update simulation state
+        sim.setInput(motorVoltage);
+        sim.update(0.02);
+
+        ioState.rotorAngle = Rotations.of(sim.getPositionMeters() * rotationsperMeter);
+        ioState.rotorVelocity =
+                RotationsPerSecond.of(sim.getVelocityMetersPerSecond() * rotationsperMeter);
+        ioState.mechanismHeight = Meters.of(sim.getPositionMeters());
+        ioState.mechanismVelocity = MetersPerSecond.of(sim.getVelocityMetersPerSecond());
+
+        ioState.motorVoltage = Volts.of(motorVoltage);
+        ioState.statorCurrent = Amps.of(sim.getCurrentDrawAmps());
+        ioState.supplyCurrent = ioState.statorCurrent.times(motorVoltage / 12.0);
     }
-    // Update simulation state
-    sim.setInput(MathUtil.clamp(motorVoltage, -12.0, 12.0));
-    sim.update(0.02);
 
-    ioState.mechanismHeight = Meters.of(sim.getPositionMeters());
-    ioState.mechanismVelocity = MetersPerSecond.of(sim.getVelocityMetersPerSecond());
-    ioState.motorVoltage = Volts.of(motorVoltage);
-    ioState.statorCurrent = Amps.of(sim.getCurrentDrawAmps());
-  }
+    @Override
+    public void setVoltage(Voltage voltage) {
+        motorVoltage = MathUtil.clamp(voltage.in(Volts), -12.0, 12.0);
+        lastNextPositionMeters = sim.getPositionMeters();
+    }
 
-  @Override
-  public void setVoltage(Voltage voltage) {
-    closedLoop = false;
-    motorVoltage = voltage.in(Volts);
-  }
-
-  @Override
-  public void setNextState(ProfileState<DistanceUnit, LinearVelocityUnit> nextState) {
-    closedLoop = true;
-    nextVelocityMetersPerSecond = nextState.nextVelocity.in(MetersPerSecond);
-    lastNextPositionMeters = nextState.lastNextPosition.in(Meters);
-  }
-  //   @Override
-  //   public void setGoalPosition(Distance height) {
-  //     closedLoop = true;
-  //     profile = new TrapezoidProfile(new Constraints(maxVelocity, maxAcceleration));
-  //     goalState = new State(height.in(Meters), 0);
-  //     lastState = currentState();
-  //   }
-
-  //   @Override
-  //   public void setGoalVelocity(LinearVelocity velocity) {
-  //     closedLoop = true;
-  //     profile =
-  //         new TrapezoidProfile(
-  //             new Constraints(
-  //                 Math.abs(velocity.in(MetersPerSecond)) < maxVelocity
-  //                     ? Math.abs(velocity.in(MetersPerSecond))
-  //                     : maxVelocity,
-  //                 maxAcceleration));
-  //     goalState = new State(velocity.in(MetersPerSecond) >= 0 ? maxPosition : minPosition, 0);
-  //     lastState = currentState();
-  // //   }
-
-  //   private State currentState() {
-  //     return new State(sim.getPositionMeters(), sim.getVelocityMetersPerSecond());
-  //   }
+    @Override
+    public void setNextState(Distance nextHeight, LinearVelocity nextVelocity) {
+        motorVoltage =
+                MathUtil.clamp(
+                        feedforward.calculateWithVelocities(
+                                        sim.getVelocityMetersPerSecond(),
+                                        nextVelocity.in(MetersPerSecond))
+                                + pid.calculate(sim.getPositionMeters(), lastNextPositionMeters),
+                        -12.0,
+                        12.0);
+        lastNextPositionMeters = nextHeight.in(Meters);
+    }
 }

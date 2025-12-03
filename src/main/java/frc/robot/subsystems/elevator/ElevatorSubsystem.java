@@ -4,162 +4,152 @@
 
 package frc.robot.subsystems.elevator;
 
-import static edu.wpi.first.units.Units.Feet;
 import static edu.wpi.first.units.Units.Meters;
 import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.MetersPerSecondPerSecond;
 import static edu.wpi.first.units.Units.Volts;
 import static frc.robot.subsystems.elevator.ElevatorConstants.*;
 
-import edu.wpi.first.math.trajectory.TrapezoidProfile.State;
-import edu.wpi.first.units.DistanceUnit;
-import edu.wpi.first.units.LinearAccelerationUnit;
-import edu.wpi.first.units.LinearVelocityUnit;
+import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.subsystems.elevator.ElevatorIO.ElevatorIOState;
-import frc.robot.util.logging.LogUtil;
-import frc.robot.util.logging.MeasureStruct;
-import frc.robot.util.motionProfiling.TrapezoidProfileController;
 import java.util.function.Supplier;
 import org.littletonrobotics.junction.Logger;
 
 public class ElevatorSubsystem extends SubsystemBase {
-  /** Interface to control the elevator's motors */
-  private final ElevatorIO io;
+    /** Interface to control the elevator's motors */
+    private final ElevatorIO io;
 
-  /** State of the elevator's motors */
-  private final ElevatorIOState ioState = new ElevatorIOState();
+    /** State of the elevator's motors */
+    private final ElevatorIOState ioState = new ElevatorIOState();
 
-  private final TrapezoidProfileController<DistanceUnit, LinearVelocityUnit, LinearAccelerationUnit>
-      profileController =
-          new TrapezoidProfileController<>(
-              minPosition,
-              maxPosition,
-              maxVelocity,
-              maxAcceleration,
-              Meters,
-              MetersPerSecond,
-              MetersPerSecondPerSecond,
-              "Elevator");
+    private TrapezoidProfile profile =
+            new TrapezoidProfile(
+                    new TrapezoidProfile.Constraints(
+                            maxVelocity.in(MetersPerSecond),
+                            maxAcceleration.in(MetersPerSecondPerSecond)));
 
-  /** Creates a new ElevatorSubsystem. */
-  public ElevatorSubsystem(ElevatorIO io) {
-    this.io = io;
-  }
+    /** Creates a new ElevatorSubsystem. */
+    public ElevatorSubsystem(ElevatorIO io) {
+        this.io = io;
+    }
 
-  @Override
-  public void periodic() {
-    io.updateState(ioState);
-    logState();
-    profileController.updateState(
-        new State(
-            ioState.mechanismHeight.in(Meters), ioState.mechanismVelocity.in(MetersPerSecond)));
-  }
+    @Override
+    public void periodic() {
+        io.updateState(ioState);
+        Logger.processInputs(name, ioState);
+        // Logger.recordOutput(name + "/State", ioState);
+    }
 
-  // Voltage methods
+    // Voltage methods
 
-  /** Sets the elevator to the supplied voltage. */
-  public void setVoltage(Voltage voltage) {
-    profileController.setVoltage(voltage);
-    io.setVoltage(profileController.getVoltage());
-  }
+    /** Sets the elevator to the supplied voltage. */
+    public void setVoltage(Voltage voltage) {
+        io.setVoltage(voltage);
+    }
 
-  /** Sets the elevator to the supplied voltage. */
-  public Command setVoltageCommandFactory(Supplier<Voltage> voltageSupplier) {
-    return runOnce(
-        () -> {
-          setVoltage(voltageSupplier.get());
-        });
-  }
+    /** Sets the elevator to the supplied voltage. */
+    public Command setVoltageCommandFactory(Supplier<Voltage> voltageSupplier) {
+        return this.runOnce(
+                () -> {
+                    setVoltage(voltageSupplier.get());
+                });
+    }
 
-  /** Runs the elevator at the supplied voltage. */
-  public Command runVoltageCommandFactory(Supplier<Voltage> voltageSupplier) {
-    return run(
-        () -> {
-          setVoltage(voltageSupplier.get());
-        });
-  }
+    /** Runs the elevator at the supplied voltage. */
+    public Command runVoltageCommandFactory(Supplier<Voltage> voltageSupplier) {
+        return this.run(
+                () -> {
+                    setVoltage(voltageSupplier.get());
+                });
+    }
 
-  // Position methods
+    // Position methods
 
-  /** Runs the elevator to and holds at the supplied height. */
-  public void setGoalPosition(Distance height) {
-    profileController.setGoalPosition(height);
-    io.setNextState(profileController.getNextProfileState());
-  }
+    /** Runs the elevator to and holds at the supplied height. */
+    public void setGoalPosition(Distance height) {
+        profile =
+                new TrapezoidProfile(
+                        new TrapezoidProfile.Constraints(
+                                maxVelocity.in(MetersPerSecond),
+                                maxAcceleration.in(MetersPerSecondPerSecond)));
+        TrapezoidProfile.State nextState =
+                calculateNextState(new TrapezoidProfile.State(height.in(Meters), 0));
+        io.setNextState(Meters.of(nextState.position), MetersPerSecond.of(nextState.velocity));
+    }
 
-  /** Runs the elevator to and holds at the supplied height. */
-  public Command setGoalPositionCommandFactory(Supplier<Distance> heightSupplier) {
-    return runOnce(
-        () -> {
-          setGoalPosition(heightSupplier.get());
-        });
-  }
+    /** Runs the elevator to and holds at the supplied height. */
+    public Command setGoalPositionCommandFactory(Supplier<Distance> heightSupplier) {
+        return this.runOnce(
+                () -> {
+                    setGoalPosition(heightSupplier.get());
+                });
+    }
 
-  /** Runs the elevator to and holds at the supplied height. */
-  public Command runGoalPositionCommandFactory(Supplier<Distance> heightSupplier) {
-    return run(
-        () -> {
-          setGoalPosition(heightSupplier.get());
-        });
-  }
+    /** Runs the elevator to and holds at the supplied height. */
+    public Command runGoalPositionCommandFactory(Supplier<Distance> heightSupplier) {
+        return this.run(
+                () -> {
+                    setGoalPosition(heightSupplier.get());
+                });
+    }
 
-  // Velocity methods
+    // Velocity methods
 
-  /** Runs the elevator to and holds at the supplied velocity. */
-  public void setGoalVelocity(LinearVelocity velocity) {
-    profileController.setGoalVelocity(velocity);
-    io.setNextState(profileController.getNextProfileState());
-    ;
-  }
+    /** Runs the elevator to and holds at the supplied velocity. */
+    public void setGoalVelocity(LinearVelocity velocity) {
+        profile =
+                new TrapezoidProfile(
+                        new TrapezoidProfile.Constraints(
+                                maxVelocity.in(MetersPerSecond),
+                                maxAcceleration.in(MetersPerSecondPerSecond)));
+        TrapezoidProfile.State nextState =
+                calculateNextState(
+                        new TrapezoidProfile.State(
+                                velocity.in(MetersPerSecond) >= 0
+                                        ? maxPosition.in(Meters)
+                                        : minPosition.in(Meters),
+                                velocity.in(MetersPerSecond)));
+        io.setNextState(Meters.of(nextState.position), MetersPerSecond.of(nextState.velocity));
+    }
 
-  /** Runs the elevator to and holds at the supplied velocity. */
-  public Command setGoalVelocityCommandFactory(Supplier<LinearVelocity> velocitySupplier) {
-    return runOnce(
-        () -> {
-          setGoalVelocity(velocitySupplier.get());
-        });
-  }
+    /** Runs the elevator to and holds at the supplied velocity. */
+    public Command setGoalVelocityCommandFactory(Supplier<LinearVelocity> velocitySupplier) {
+        return this.runOnce(
+                () -> {
+                    setGoalVelocity(velocitySupplier.get());
+                });
+    }
 
-  /** Runs the elevator to and holds at the supplied velocity. */
-  public Command runGoalVelocityCommandFactory(Supplier<LinearVelocity> velocitySupplier) {
-    return run(
-        () -> {
-          setGoalVelocity(velocitySupplier.get());
-        });
-  }
+    /** Runs the elevator to and holds at the supplied velocity. */
+    public Command runGoalVelocityCommandFactory(Supplier<LinearVelocity> velocitySupplier) {
+        return this.run(
+                () -> {
+                    setGoalVelocity(velocitySupplier.get());
+                });
+    }
 
-  /** Sets voltage of both motors to 0. */
-  public void stop() {
-    setVoltageCommandFactory(() -> Volts.of(0.0)).schedule();
-    ;
-  }
+    /** Sets voltage of both motors to 0. */
+    public void stop() {
+        this.getCurrentCommand().cancel();
+        this.startEnd(() -> setVoltage(Volts.of(0)), () -> {}).schedule();
+    }
 
-  /** Returns the motor state of the elevator. */
-  public ElevatorIOState getMotorState() {
-    return ioState;
-  }
+    /** Returns the motor state of the elevator. */
+    public ElevatorIOState getMotorState() {
+        return ioState;
+    }
 
-  private void logState() {
-    Logger.recordOutput(
-        name + "/distancetest", new MeasureStruct<DistanceUnit>(Meters), Feet.of(30));
-    // LoggedDoubleList ldl = new LoggedDoubleList(name + "/Setpoint938", "_m", "_m ̸ s", "_V");
-    // ldl.setValues(2.4, 4.9, 5.0);
-    // Logger.recordOutput(
-    //     name + "/Setpoint22",
-    //     Setpoint.struct,
-    //     new Setpoint(Meters.of(Double.NaN), FeetPerSecond.of(2), Volts.of(4)));
-    // Logger.recordOutput(name + "/Setpoint63", ldl.struct, ldl.values);
-    LogUtil.Log("/rotorAngle", ioState.rotorAngle);
-    LogUtil.Log("/rotorVelocity", ioState.rotorVelocity);
-    LogUtil.Log("/mechanismHeight", ioState.mechanismHeight);
-    LogUtil.Log("/mechanismVelocity", ioState.mechanismVelocity);
-    LogUtil.Log("/motorVoltage", ioState.motorVoltage);
-    LogUtil.Log("/statorCurrent", ioState.statorCurrent);
-    LogUtil.Log("/supplyCurrent", ioState.supplyCurrent);
-  }
+    private TrapezoidProfile.State calculateNextState(TrapezoidProfile.State goalState) {
+        return profile.calculate(
+                0.02,
+                new TrapezoidProfile.State(
+                        ioState.mechanismHeight.in(Meters),
+                        ioState.mechanismVelocity.in(MetersPerSecond)),
+                goalState);
+    }
 }
