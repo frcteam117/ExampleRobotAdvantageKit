@@ -15,12 +15,12 @@ import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.util.struct.Struct;
 import edu.wpi.first.util.struct.StructSerializable;
-import frc.robot.util.logging.StateStruct;
+import frc.robot.util.logging.InputsStruct;
 import org.littletonrobotics.junction.LogTable;
 import org.littletonrobotics.junction.inputs.LoggableInputs;
 
 public interface ElevatorIO {
-    public class ElevatorIOState implements LoggableInputs, StructSerializable {
+    public class ElevatorIOInputs implements LoggableInputs, StructSerializable {
         /** Elevator's leading motor's internal encoder position. */
         public Angle rotorAngle = Rotations.of(0);
         /** Internal encoder velocity of the elevator's leading motor. */
@@ -48,9 +48,9 @@ public interface ElevatorIO {
          */
         public Current supplyCurrent = Amps.of(0);
 
-        public static final Struct<ElevatorIOState> struct =
-                new StateStruct<>(
-                        ElevatorIOState.class,
+        public static final Struct<ElevatorIOInputs> struct =
+                new InputsStruct<>(
+                        ElevatorIOInputs.class,
                         Rotations,
                         RotationsPerSecond,
                         Meters,
@@ -61,29 +61,29 @@ public interface ElevatorIO {
 
         @Override
         public void toLog(LogTable table) {
-            table.put("State", struct, this);
+            table.put("Inputs", struct, this);
         }
 
         @Override
         public void fromLog(LogTable table) {
-            ElevatorIOState state = table.get("State", struct, this);
-            rotorAngle = state.rotorAngle;
-            rotorVelocity = state.rotorVelocity;
-            mechanismHeight = state.mechanismHeight;
-            mechanismVelocity = state.mechanismVelocity;
-            motorVoltage = state.motorVoltage;
-            statorCurrent = state.statorCurrent;
-            supplyCurrent = state.supplyCurrent;
+            ElevatorIOInputs inputs = table.get("Inputs", struct, this);
+            rotorAngle = inputs.rotorAngle;
+            rotorVelocity = inputs.rotorVelocity;
+            mechanismHeight = inputs.mechanismHeight;
+            mechanismVelocity = inputs.mechanismVelocity;
+            motorVoltage = inputs.motorVoltage;
+            statorCurrent = inputs.statorCurrent;
+            supplyCurrent = inputs.supplyCurrent;
         }
     }
 
     /**
-     * Mutates the provided {@code ElevatorIOState} into the current state of the elevator. Also
+     * Mutates the provided {@code ElevatorIOInputs} into the current inputs of the elevator. Also
      * runs the update method for simulation.
      *
-     * @param state the {@code ElevatorIOState} to be mutated
+     * @param inputs the {@code ElevatorIOInputs} to be mutated
      */
-    default void updateState(ElevatorIOState state) {}
+    default void updateInputs(ElevatorIOInputs inputs) {}
 
     /**
      * Sets the voltage applied to the elevator's motors in an open loop

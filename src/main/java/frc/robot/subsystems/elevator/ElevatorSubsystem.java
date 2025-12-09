@@ -16,7 +16,7 @@ import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.subsystems.elevator.ElevatorIO.ElevatorIOState;
+import frc.robot.subsystems.elevator.ElevatorIO.ElevatorIOInputs;
 import java.util.function.Supplier;
 import org.littletonrobotics.junction.Logger;
 
@@ -24,8 +24,8 @@ public class ElevatorSubsystem extends SubsystemBase {
     /** Interface to control the elevator's motors */
     private final ElevatorIO io;
 
-    /** State of the elevator's motors */
-    private final ElevatorIOState ioState = new ElevatorIOState();
+    /** Inputs of the elevator's motors */
+    private final ElevatorIOInputs ioInputs = new ElevatorIOInputs();
 
     private TrapezoidProfile profile =
             new TrapezoidProfile(
@@ -40,9 +40,9 @@ public class ElevatorSubsystem extends SubsystemBase {
 
     @Override
     public void periodic() {
-        io.updateState(ioState);
-        Logger.processInputs(name, ioState);
-        // Logger.recordOutput(name + "/State", ioState);
+        io.updateInputs(ioInputs);
+        Logger.processInputs(name, ioInputs);
+        // Logger.recordOutput(name + "/Inputs", ioInputs);
     }
 
     // Voltage methods
@@ -139,17 +139,17 @@ public class ElevatorSubsystem extends SubsystemBase {
         this.startEnd(() -> setVoltage(Volts.of(0)), () -> {}).schedule();
     }
 
-    /** Returns the motor state of the elevator. */
-    public ElevatorIOState getMotorState() {
-        return ioState;
+    /** Returns the inputs of the elevator mechanism. */
+    public ElevatorIOInputs getMotorInputs() {
+        return ioInputs;
     }
 
     private TrapezoidProfile.State calculateNextState(TrapezoidProfile.State goalState) {
         return profile.calculate(
                 0.02,
                 new TrapezoidProfile.State(
-                        ioState.mechanismHeight.in(Meters),
-                        ioState.mechanismVelocity.in(MetersPerSecond)),
+                        ioInputs.mechanismHeight.in(Meters),
+                        ioInputs.mechanismVelocity.in(MetersPerSecond)),
                 goalState);
     }
 }

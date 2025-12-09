@@ -56,16 +56,16 @@ public class ElevatorIOSpark implements ElevatorIO {
     private double lastNextPositionMeters;
 
     @Override
-    public void updateState(ElevatorIOState ioState) {
-        ioState.rotorAngle = Rotations.of(encoder.getPosition());
-        ioState.rotorVelocity = RotationsPerSecond.of(encoder.getVelocity());
-        ioState.mechanismHeight = Meters.of(encoder.getPosition() / rotationsperMeter);
-        ioState.mechanismVelocity = MetersPerSecond.of(encoder.getVelocity() / rotationsperMeter);
+    public void updateInputs(ElevatorIOInputs ioInputs) {
+        ioInputs.rotorAngle = Rotations.of(encoder.getPosition());
+        ioInputs.rotorVelocity = RotationsPerSecond.of(encoder.getVelocity());
+        ioInputs.mechanismHeight = Meters.of(encoder.getPosition() / rotationsperMeter);
+        ioInputs.mechanismVelocity = MetersPerSecond.of(encoder.getVelocity() / rotationsperMeter);
 
-        ioState.motorVoltage =
+        ioInputs.motorVoltage =
                 Volts.of(leadingSpark.getBusVoltage() * leadingSpark.getAppliedOutput());
-        ioState.statorCurrent = Amps.of(leadingSpark.getOutputCurrent());
-        ioState.supplyCurrent = ioState.statorCurrent.times(ioState.motorVoltage.in(Volts) / 12.0);
+        ioInputs.statorCurrent = Amps.of(leadingSpark.getOutputCurrent());
+        ioInputs.supplyCurrent = ioInputs.statorCurrent.times(ioInputs.motorVoltage.in(Volts) / 12.0);
     }
 
     @Override

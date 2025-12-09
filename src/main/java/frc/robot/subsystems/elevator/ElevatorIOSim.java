@@ -53,20 +53,20 @@ public class ElevatorIOSim implements ElevatorIO {
     private double lastNextPositionMeters;
 
     @Override
-    public void updateState(ElevatorIOState ioState) {
-        // Update simulation state
+    public void updateInputs(ElevatorIOInputs ioInputs) {
+        // Update simulation inputs
         sim.setInput(motorVoltage);
         sim.update(0.02);
 
-        ioState.rotorAngle = Rotations.of(sim.getPositionMeters() * rotationsperMeter);
-        ioState.rotorVelocity =
+        ioInputs.rotorAngle = Rotations.of(sim.getPositionMeters() * rotationsperMeter);
+        ioInputs.rotorVelocity =
                 RotationsPerSecond.of(sim.getVelocityMetersPerSecond() * rotationsperMeter);
-        ioState.mechanismHeight = Meters.of(sim.getPositionMeters());
-        ioState.mechanismVelocity = MetersPerSecond.of(sim.getVelocityMetersPerSecond());
+        ioInputs.mechanismHeight = Meters.of(sim.getPositionMeters());
+        ioInputs.mechanismVelocity = MetersPerSecond.of(sim.getVelocityMetersPerSecond());
 
-        ioState.motorVoltage = Volts.of(motorVoltage);
-        ioState.statorCurrent = Amps.of(sim.getCurrentDrawAmps());
-        ioState.supplyCurrent = ioState.statorCurrent.times(motorVoltage / 12.0);
+        ioInputs.motorVoltage = Volts.of(motorVoltage);
+        ioInputs.statorCurrent = Amps.of(sim.getCurrentDrawAmps());
+        ioInputs.supplyCurrent = ioInputs.statorCurrent.times(motorVoltage / 12.0);
     }
 
     @Override
