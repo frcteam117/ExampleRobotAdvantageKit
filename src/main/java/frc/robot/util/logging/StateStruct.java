@@ -17,340 +17,340 @@ import java.util.function.Function;
 
 @SuppressWarnings("rawtypes")
 public class StateStruct<T> implements Struct<T> {
-    private final Class<T> stateClass;
-    private Constructor<T> stateConstructor = null;
-    private final String typeName;
-    private final int size;
-    private final String schema;
-    private final Struct<?>[] nestedStructs;
+  private final Class<T> stateClass;
+  private Constructor<T> stateConstructor = null;
+  private final String typeName;
+  private final int size;
+  private final String schema;
+  private final Struct<?>[] nestedStructs;
 
-    private final List<BiConsumer<ByteBuffer, Object>> packFunctions = new ArrayList<>();
-    private final List<Function<ByteBuffer, Object>> unpackFunctions = new ArrayList<>();
+  private final List<BiConsumer<ByteBuffer, Object>> packFunctions = new ArrayList<>();
+  private final List<Function<ByteBuffer, Object>> unpackFunctions = new ArrayList<>();
 
-    public StateStruct(Class<T> stateClass, Unit... units) {
-        this(stateClass, stateClass.getSimpleName(), units);
+  public StateStruct(Class<T> stateClass, Unit... units) {
+    this(stateClass, stateClass.getSimpleName(), units);
+  }
+
+  @SuppressWarnings("unchecked")
+  public StateStruct(Class<T> stateClass, String typeName, Unit... units) {
+    this.stateClass = stateClass;
+    this.typeName = typeName;
+    int num = 0;
+
+    int size = 0;
+    var schema = new StringBuilder();
+    Field[] fields = stateClass.getFields();
+    List<Struct<?>> nestedStructs = new LinkedList<>();
+    Class<?>[] parameterTypes;
+    if (StructSerializable.class.isAssignableFrom(stateClass)) {
+      parameterTypes = new Class[fields.length - 1];
+    } else {
+      parameterTypes = new Class[fields.length];
     }
+    for (int i = 0; i < fields.length; i++) {
+      Field field = fields[i];
 
-    @SuppressWarnings("unchecked")
-    public StateStruct(Class<T> stateClass, String typeName, Unit... units) {
-        this.stateClass = stateClass;
-        this.typeName = typeName;
-        int num = 0;
+      // Add to parameter types
+      if (!field.getName().equals("struct")) {
+        parameterTypes[i] = field.getType();
 
-        int size = 0;
-        var schema = new StringBuilder();
-        Field[] fields = stateClass.getFields();
-        List<Struct<?>> nestedStructs = new LinkedList<>();
-        Class<?>[] parameterTypes;
-        if (StructSerializable.class.isAssignableFrom(stateClass)) {
-            parameterTypes = new Class[fields.length - 1];
-        } else {
-            parameterTypes = new Class[fields.length];
-        }
-        for (int i = 0; i < fields.length; i++) {
-            Field field = fields[i];
-
-            // Add to parameter types
-            if (!field.getName().equals("struct")) {
-                parameterTypes[i] = field.getType();
-
-                // Add functions based on type
-                if (field.getType().equals(boolean.class)) {
-                    size += 1;
-                    schema.append("bool ");
-                    schema.append(field.getName());
-                    schema.append(";");
-                    packFunctions.add(
-                            (ByteBuffer bb, Object state) -> {
-                                try {
-                                    bb.put(((boolean) field.get(state)) ? (byte) 1 : (byte) 0);
-                                } catch (IllegalAccessException | IllegalArgumentException e) {
-                                    e.printStackTrace();
-                                }
-                            });
-                    unpackFunctions.add((ByteBuffer bb) -> bb.get() != 0);
-
-                } else if (field.getType().equals(short.class)) {
-                    size += 2;
-                    schema.append("int16 ");
-                    schema.append(field.getName());
-                    schema.append(";");
-                    packFunctions.add(
-                            (ByteBuffer bb, Object state) -> {
-                                try {
-                                    bb.putShort((short) field.get(state));
-                                } catch (IllegalAccessException | IllegalArgumentException e) {
-                                    e.printStackTrace();
-                                }
-                            });
-                    unpackFunctions.add((ByteBuffer bb) -> bb.getShort());
-
-                } else if (field.getType().equals(int.class)) {
-                    size += 4;
-                    schema.append("int32 ");
-                    schema.append(field.getName());
-                    schema.append(";");
-                    packFunctions.add(
-                            (ByteBuffer bb, Object state) -> {
-                                try {
-                                    bb.putInt((int) field.get(state));
-                                } catch (IllegalAccessException | IllegalArgumentException e) {
-                                    e.printStackTrace();
-                                }
-                            });
-                    unpackFunctions.add((ByteBuffer bb) -> bb.getInt());
-
-                } else if (field.getType().equals(long.class)) {
-                    size += 8;
-                    schema.append("int64 ");
-                    schema.append(field.getName());
-                    schema.append(";");
-                    packFunctions.add(
-                            (ByteBuffer bb, Object state) -> {
-                                try {
-                                    bb.putLong((long) field.get(state));
-                                } catch (IllegalAccessException | IllegalArgumentException e) {
-                                    e.printStackTrace();
-                                }
-                            });
-                    unpackFunctions.add((ByteBuffer bb) -> bb.getLong());
-
-                } else if (field.getType().equals(float.class)) {
-                    size += 4;
-                    schema.append("float ");
-                    schema.append(field.getName());
-                    schema.append(";");
-                    packFunctions.add(
-                            (ByteBuffer bb, Object state) -> {
-                                try {
-                                    bb.putFloat((float) field.get(state));
-                                } catch (IllegalAccessException | IllegalArgumentException e) {
-                                    e.printStackTrace();
-                                }
-                            });
-                    unpackFunctions.add((ByteBuffer bb) -> bb.getFloat());
-
-                } else if (field.getType().equals(double.class)) {
-                    size += 8;
-                    schema.append("double ");
-                    schema.append(field.getName());
-                    schema.append(";");
-                    packFunctions.add(
-                            (ByteBuffer bb, Object state) -> {
-                                try {
-                                    bb.putDouble((double) field.get(state));
-                                } catch (IllegalAccessException | IllegalArgumentException e) {
-                                    e.printStackTrace();
-                                }
-                            });
-                    unpackFunctions.add((ByteBuffer bb) -> bb.getDouble());
-
-                } else if (Measure.class.isAssignableFrom(field.getType())) {
-                    // Unit tempUnit = null;
-                    // if (units.length > num) {
-                    //   tempUnit = units[num];
-                    // } else {
-                    //   try {
-                    //     tempUnit =
-                    //         (Unit)
-                    //             ((Class<Measure>) component.getType())
-                    //                 .getDeclaredMethod("baseUnit")
-                    //                 .invoke(component.getAccessor().invoke());
-                    //   } catch (IllegalAccessException
-                    //       | IllegalArgumentException
-                    //       | InvocationTargetException
-                    //       | NoSuchMethodException
-                    //       | SecurityException
-                    //       | InstantiationException e) {
-                    //     e.printStackTrace();
-                    //   }
-                    // }
-                    // TODO Make this work and add warning for if tempUnit is still null
-                    final Unit unit = units[num];
-                    size += 8;
-                    schema.append("double ");
-                    schema.append(field.getName() + LogUtil.toSuffix(unit.symbol()));
-                    num++;
-                    schema.append(";");
-                    packFunctions.add(
-                            (ByteBuffer bb, Object state) -> {
-                                try {
-                                    bb.putDouble((double) ((Measure) field.get(state)).in(unit));
-                                } catch (IllegalAccessException | IllegalArgumentException e) {
-                                    e.printStackTrace();
-                                }
-                            });
-                    unpackFunctions.add((ByteBuffer bb) -> unit.of(bb.getDouble()));
-
-                } else if (field.getType().isEnum()) {
-                    size += 4;
-                    Enum[] enumValues = (Enum[]) field.getType().getEnumConstants();
-                    schema.append("enum {");
-                    for (int j = 0; j < enumValues.length; j++) {
-                        schema.append(enumValues[j].name());
-                        schema.append("=");
-                        schema.append(enumValues[j].ordinal());
-                        if (j < enumValues.length - 1) {
-                            schema.append(", ");
-                        }
-                    }
-                    schema.append("} int32 ");
-                    schema.append(field.getName());
-                    schema.append(";");
-                    packFunctions.add(
-                            (ByteBuffer bb, Object state) -> {
-                                try {
-                                    bb.putInt(((Enum) field.get(state)).ordinal());
-                                } catch (IllegalAccessException | IllegalArgumentException e) {
-                                    e.printStackTrace();
-                                }
-                            });
-                    unpackFunctions.add((ByteBuffer bb) -> enumValues[bb.getInt()]);
-
-                } else if (field.getType().isRecord()
-                        || StructSerializable.class.isAssignableFrom(field.getType())) {
-                    Struct<?> struct = null;
-                    if (field.getType().isRecord()) {
-                        struct = new RecordStruct(field.getType());
-                    } else {
-                        try {
-                            struct = (Struct) field.getType().getDeclaredField("struct").get(null);
-                        } catch (IllegalArgumentException
-                                | IllegalAccessException
-                                | NoSuchFieldException
-                                | SecurityException e) {
-                            e.printStackTrace();
-                        }
-                    }
-
-                    if (struct == null) {
-                        DriverStation.reportError(
-                                "[AdvantageKit] Failed to load nested struct \""
-                                        + field.getName()
-                                        + "\" for state type \""
-                                        + stateClass.getSimpleName()
-                                        + "\"",
-                                true);
-                        packFunctions.add((ByteBuffer bb, Object state) -> {});
-                        unpackFunctions.add((ByteBuffer bb) -> null);
-                    } else {
-                        size += struct.getSize();
-                        schema.append(struct.getTypeName());
-                        schema.append(" ");
-                        schema.append(field.getName());
-                        schema.append(";");
-                        nestedStructs.add(struct);
-                        Struct rawStruct = struct;
-                        packFunctions.add(
-                                (ByteBuffer bb, Object state) -> {
-                                    try {
-                                        rawStruct.pack(bb, field.get(state));
-                                    } catch (IllegalAccessException | IllegalArgumentException e) {
-                                        e.printStackTrace();
-                                    }
-                                });
-                        unpackFunctions.add((ByteBuffer bb) -> rawStruct.unpack(bb));
-                    }
-
-                } else {
-                    DriverStation.reportError(
-                            "[AdvantageKit] Field \""
-                                    + field.getName()
-                                    + "\" for state type \""
-                                    + stateClass.getSimpleName()
-                                    + "\" uses an unsupported type and will not be logged. Check the implementation.",
-                            true);
-                    packFunctions.add((ByteBuffer bb, Object state) -> {});
-                    unpackFunctions.add((ByteBuffer bb) -> null);
+        // Add functions based on type
+        if (field.getType().equals(boolean.class)) {
+          size += 1;
+          schema.append("bool ");
+          schema.append(field.getName());
+          schema.append(";");
+          packFunctions.add(
+              (ByteBuffer bb, Object state) -> {
+                try {
+                  bb.put(((boolean) field.get(state)) ? (byte) 1 : (byte) 0);
+                } catch (IllegalAccessException | IllegalArgumentException e) {
+                  e.printStackTrace();
                 }
+              });
+          unpackFunctions.add((ByteBuffer bb) -> bb.get() != 0);
+
+        } else if (field.getType().equals(short.class)) {
+          size += 2;
+          schema.append("int16 ");
+          schema.append(field.getName());
+          schema.append(";");
+          packFunctions.add(
+              (ByteBuffer bb, Object state) -> {
+                try {
+                  bb.putShort((short) field.get(state));
+                } catch (IllegalAccessException | IllegalArgumentException e) {
+                  e.printStackTrace();
+                }
+              });
+          unpackFunctions.add((ByteBuffer bb) -> bb.getShort());
+
+        } else if (field.getType().equals(int.class)) {
+          size += 4;
+          schema.append("int32 ");
+          schema.append(field.getName());
+          schema.append(";");
+          packFunctions.add(
+              (ByteBuffer bb, Object state) -> {
+                try {
+                  bb.putInt((int) field.get(state));
+                } catch (IllegalAccessException | IllegalArgumentException e) {
+                  e.printStackTrace();
+                }
+              });
+          unpackFunctions.add((ByteBuffer bb) -> bb.getInt());
+
+        } else if (field.getType().equals(long.class)) {
+          size += 8;
+          schema.append("int64 ");
+          schema.append(field.getName());
+          schema.append(";");
+          packFunctions.add(
+              (ByteBuffer bb, Object state) -> {
+                try {
+                  bb.putLong((long) field.get(state));
+                } catch (IllegalAccessException | IllegalArgumentException e) {
+                  e.printStackTrace();
+                }
+              });
+          unpackFunctions.add((ByteBuffer bb) -> bb.getLong());
+
+        } else if (field.getType().equals(float.class)) {
+          size += 4;
+          schema.append("float ");
+          schema.append(field.getName());
+          schema.append(";");
+          packFunctions.add(
+              (ByteBuffer bb, Object state) -> {
+                try {
+                  bb.putFloat((float) field.get(state));
+                } catch (IllegalAccessException | IllegalArgumentException e) {
+                  e.printStackTrace();
+                }
+              });
+          unpackFunctions.add((ByteBuffer bb) -> bb.getFloat());
+
+        } else if (field.getType().equals(double.class)) {
+          size += 8;
+          schema.append("double ");
+          schema.append(field.getName());
+          schema.append(";");
+          packFunctions.add(
+              (ByteBuffer bb, Object state) -> {
+                try {
+                  bb.putDouble((double) field.get(state));
+                } catch (IllegalAccessException | IllegalArgumentException e) {
+                  e.printStackTrace();
+                }
+              });
+          unpackFunctions.add((ByteBuffer bb) -> bb.getDouble());
+
+        } else if (Measure.class.isAssignableFrom(field.getType())) {
+          // Unit tempUnit = null;
+          // if (units.length > num) {
+          //   tempUnit = units[num];
+          // } else {
+          //   try {
+          //     tempUnit =
+          //         (Unit)
+          //             ((Class<Measure>) component.getType())
+          //                 .getDeclaredMethod("baseUnit")
+          //                 .invoke(component.getAccessor().invoke());
+          //   } catch (IllegalAccessException
+          //       | IllegalArgumentException
+          //       | InvocationTargetException
+          //       | NoSuchMethodException
+          //       | SecurityException
+          //       | InstantiationException e) {
+          //     e.printStackTrace();
+          //   }
+          // }
+          // TODO Make this work and add warning for if tempUnit is still null
+          final Unit unit = units[num];
+          size += 8;
+          schema.append("double ");
+          schema.append(field.getName() + LogUtil.toSuffix(unit.symbol()));
+          num++;
+          schema.append(";");
+          packFunctions.add(
+              (ByteBuffer bb, Object state) -> {
+                try {
+                  bb.putDouble((double) ((Measure) field.get(state)).in(unit));
+                } catch (IllegalAccessException | IllegalArgumentException e) {
+                  e.printStackTrace();
+                }
+              });
+          unpackFunctions.add((ByteBuffer bb) -> unit.of(bb.getDouble()));
+
+        } else if (field.getType().isEnum()) {
+          size += 4;
+          Enum[] enumValues = (Enum[]) field.getType().getEnumConstants();
+          schema.append("enum {");
+          for (int j = 0; j < enumValues.length; j++) {
+            schema.append(enumValues[j].name());
+            schema.append("=");
+            schema.append(enumValues[j].ordinal());
+            if (j < enumValues.length - 1) {
+              schema.append(", ");
             }
-        }
+          }
+          schema.append("} int32 ");
+          schema.append(field.getName());
+          schema.append(";");
+          packFunctions.add(
+              (ByteBuffer bb, Object state) -> {
+                try {
+                  bb.putInt(((Enum) field.get(state)).ordinal());
+                } catch (IllegalAccessException | IllegalArgumentException e) {
+                  e.printStackTrace();
+                }
+              });
+          unpackFunctions.add((ByteBuffer bb) -> enumValues[bb.getInt()]);
 
-        // Save schema
-        this.size = size;
-        this.schema = schema.toString();
-
-        // Save nested structs
-        this.nestedStructs = new Struct[nestedStructs.size()];
-        for (int i = 0; i < nestedStructs.size(); i++) {
-            this.nestedStructs[i] = nestedStructs.get(i);
-        }
-
-        // Get constructor
-        try {
-            this.stateConstructor = stateClass.getDeclaredConstructor();
-            this.stateConstructor.setAccessible(true);
-        } catch (NoSuchMethodException | SecurityException e) {
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    public Class<T> getTypeClass() {
-        return stateClass;
-    }
-
-    @Override
-    public String getTypeName() {
-        return typeName;
-    }
-
-    @Override
-    public int getSize() {
-        return size;
-    }
-
-    @Override
-    public String getSchema() {
-        return schema;
-    }
-
-    @Override
-    public Struct<?>[] getNested() {
-        return nestedStructs;
-    }
-
-    @Override
-    public T unpack(ByteBuffer bb) {
-        // Exit if no constructor available
-        if (stateConstructor == null) {
-            return null;
-        }
-
-        // Construct state
-        T output = null;
-        try {
-            output = stateConstructor.newInstance();
-        } catch (InstantiationException
-                | IllegalAccessException
-                | IllegalArgumentException
-                | InvocationTargetException e) {
-            e.printStackTrace();
-        }
-
-        // Unpack elements
-        Field[] fields = stateClass.getDeclaredFields();
-        for (int i = 0; i < unpackFunctions.size(); i++) {
-            fields[i].setAccessible(true);
+        } else if (field.getType().isRecord()
+            || StructSerializable.class.isAssignableFrom(field.getType())) {
+          Struct<?> struct = null;
+          if (field.getType().isRecord()) {
+            struct = new RecordStruct(field.getType());
+          } else {
             try {
-                fields[i].set(output, unpackFunctions.get(i).apply(bb));
-            } catch (IllegalArgumentException | IllegalAccessException e) {
-                e.printStackTrace();
+              struct = (Struct) field.getType().getDeclaredField("struct").get(null);
+            } catch (IllegalArgumentException
+                | IllegalAccessException
+                | NoSuchFieldException
+                | SecurityException e) {
+              e.printStackTrace();
             }
+          }
+
+          if (struct == null) {
+            DriverStation.reportError(
+                "[AdvantageKit] Failed to load nested struct \""
+                    + field.getName()
+                    + "\" for state type \""
+                    + stateClass.getSimpleName()
+                    + "\"",
+                true);
+            packFunctions.add((ByteBuffer bb, Object state) -> {});
+            unpackFunctions.add((ByteBuffer bb) -> null);
+          } else {
+            size += struct.getSize();
+            schema.append(struct.getTypeName());
+            schema.append(" ");
+            schema.append(field.getName());
+            schema.append(";");
+            nestedStructs.add(struct);
+            Struct rawStruct = struct;
+            packFunctions.add(
+                (ByteBuffer bb, Object state) -> {
+                  try {
+                    rawStruct.pack(bb, field.get(state));
+                  } catch (IllegalAccessException | IllegalArgumentException e) {
+                    e.printStackTrace();
+                  }
+                });
+            unpackFunctions.add((ByteBuffer bb) -> rawStruct.unpack(bb));
+          }
+
+        } else {
+          DriverStation.reportError(
+              "[AdvantageKit] Field \""
+                  + field.getName()
+                  + "\" for state type \""
+                  + stateClass.getSimpleName()
+                  + "\" uses an unsupported type and will not be logged. Check the implementation.",
+              true);
+          packFunctions.add((ByteBuffer bb, Object state) -> {});
+          unpackFunctions.add((ByteBuffer bb) -> null);
         }
-
-        return output;
+      }
     }
 
-    @Override
-    public void pack(ByteBuffer bb, Object value) {
-        for (var function : packFunctions) {
-            function.accept(bb, value);
-        }
+    // Save schema
+    this.size = size;
+    this.schema = schema.toString();
+
+    // Save nested structs
+    this.nestedStructs = new Struct[nestedStructs.size()];
+    for (int i = 0; i < nestedStructs.size(); i++) {
+      this.nestedStructs[i] = nestedStructs.get(i);
     }
 
-    @Override
-    public boolean isImmutable() {
-        return true;
+    // Get constructor
+    try {
+      this.stateConstructor = stateClass.getDeclaredConstructor();
+      this.stateConstructor.setAccessible(true);
+    } catch (NoSuchMethodException | SecurityException e) {
+      e.printStackTrace();
     }
+  }
+
+  @Override
+  public Class<T> getTypeClass() {
+    return stateClass;
+  }
+
+  @Override
+  public String getTypeName() {
+    return typeName;
+  }
+
+  @Override
+  public int getSize() {
+    return size;
+  }
+
+  @Override
+  public String getSchema() {
+    return schema;
+  }
+
+  @Override
+  public Struct<?>[] getNested() {
+    return nestedStructs;
+  }
+
+  @Override
+  public T unpack(ByteBuffer bb) {
+    // Exit if no constructor available
+    if (stateConstructor == null) {
+      return null;
+    }
+
+    // Construct state
+    T output = null;
+    try {
+      output = stateConstructor.newInstance();
+    } catch (InstantiationException
+        | IllegalAccessException
+        | IllegalArgumentException
+        | InvocationTargetException e) {
+      e.printStackTrace();
+    }
+
+    // Unpack elements
+    Field[] fields = stateClass.getDeclaredFields();
+    for (int i = 0; i < unpackFunctions.size(); i++) {
+      fields[i].setAccessible(true);
+      try {
+        fields[i].set(output, unpackFunctions.get(i).apply(bb));
+      } catch (IllegalArgumentException | IllegalAccessException e) {
+        e.printStackTrace();
+      }
+    }
+
+    return output;
+  }
+
+  @Override
+  public void pack(ByteBuffer bb, Object value) {
+    for (var function : packFunctions) {
+      function.accept(bb, value);
+    }
+  }
+
+  @Override
+  public boolean isImmutable() {
+    return true;
+  }
 }
