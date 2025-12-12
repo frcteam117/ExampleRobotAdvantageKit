@@ -21,135 +21,129 @@ import java.util.function.Supplier;
 import org.littletonrobotics.junction.Logger;
 
 public class ElevatorSubsystem extends SubsystemBase {
-    /** Interface to control the elevator's motors */
-    private final ElevatorIO io;
+  /** Interface to control the elevator's motors */
+  private final ElevatorIO io;
 
-    /** Inputs of the elevator's motors */
-    private final ElevatorIOInputs ioInputs = new ElevatorIOInputs();
+  /** Inputs of the elevator's motors */
+  private final ElevatorIOInputs ioInputs = new ElevatorIOInputs();
 
-    private TrapezoidProfile profile =
-            new TrapezoidProfile(
-                    new TrapezoidProfile.Constraints(
-                            maxVelocity.in(MetersPerSecond),
-                            maxAcceleration.in(MetersPerSecondPerSecond)));
+  private TrapezoidProfile profile =
+      new TrapezoidProfile(
+          new TrapezoidProfile.Constraints(
+              maxVelocity.in(MetersPerSecond), maxAcceleration.in(MetersPerSecondPerSecond)));
 
-    /** Creates a new ElevatorSubsystem. */
-    public ElevatorSubsystem(ElevatorIO io) {
-        this.io = io;
-    }
+  /** Creates a new ElevatorSubsystem. */
+  public ElevatorSubsystem(ElevatorIO io) {
+    this.io = io;
+  }
 
-    @Override
-    public void periodic() {
-        io.updateInputs(ioInputs);
-        Logger.processInputs(name, ioInputs);
-        // Logger.recordOutput(name + "/Inputs", ioInputs);
-    }
+  @Override
+  public void periodic() {
+    io.updateInputs(ioInputs);
+    Logger.processInputs(name, ioInputs);
+    // Logger.recordOutput(name + "/Inputs", ioInputs);
+  }
 
-    // Voltage methods
+  // Voltage methods
 
-    /** Sets the elevator to the supplied voltage. */
-    public void setVoltage(Voltage voltage) {
-        io.setVoltage(voltage);
-    }
+  /** Sets the elevator to the supplied voltage. */
+  public void setVoltage(Voltage voltage) {
+    io.setVoltage(voltage);
+  }
 
-    /** Sets the elevator to the supplied voltage. */
-    public Command setVoltageCommandFactory(Supplier<Voltage> voltageSupplier) {
-        return this.runOnce(
-                () -> {
-                    setVoltage(voltageSupplier.get());
-                });
-    }
+  /** Sets the elevator to the supplied voltage. */
+  public Command setVoltageCommandFactory(Supplier<Voltage> voltageSupplier) {
+    return this.runOnce(
+        () -> {
+          setVoltage(voltageSupplier.get());
+        });
+  }
 
-    /** Runs the elevator at the supplied voltage. */
-    public Command runVoltageCommandFactory(Supplier<Voltage> voltageSupplier) {
-        return this.run(
-                () -> {
-                    setVoltage(voltageSupplier.get());
-                });
-    }
+  /** Runs the elevator at the supplied voltage. */
+  public Command runVoltageCommandFactory(Supplier<Voltage> voltageSupplier) {
+    return this.run(
+        () -> {
+          setVoltage(voltageSupplier.get());
+        });
+  }
 
-    // Position methods
+  // Position methods
 
-    /** Runs the elevator to and holds at the supplied height. */
-    public void setGoalPosition(Distance height) {
-        profile =
-                new TrapezoidProfile(
-                        new TrapezoidProfile.Constraints(
-                                maxVelocity.in(MetersPerSecond),
-                                maxAcceleration.in(MetersPerSecondPerSecond)));
-        TrapezoidProfile.State nextState =
-                calculateNextState(new TrapezoidProfile.State(height.in(Meters), 0));
-        io.setNextState(Meters.of(nextState.position), MetersPerSecond.of(nextState.velocity));
-    }
+  /** Runs the elevator to and holds at the supplied height. */
+  public void setGoalPosition(Distance height) {
+    profile =
+        new TrapezoidProfile(
+            new TrapezoidProfile.Constraints(
+                maxVelocity.in(MetersPerSecond), maxAcceleration.in(MetersPerSecondPerSecond)));
+    TrapezoidProfile.State nextState =
+        calculateNextState(new TrapezoidProfile.State(height.in(Meters), 0));
+    io.setNextState(Meters.of(nextState.position), MetersPerSecond.of(nextState.velocity));
+  }
 
-    /** Runs the elevator to and holds at the supplied height. */
-    public Command setGoalPositionCommandFactory(Supplier<Distance> heightSupplier) {
-        return this.runOnce(
-                () -> {
-                    setGoalPosition(heightSupplier.get());
-                });
-    }
+  /** Runs the elevator to and holds at the supplied height. */
+  public Command setGoalPositionCommandFactory(Supplier<Distance> heightSupplier) {
+    return this.runOnce(
+        () -> {
+          setGoalPosition(heightSupplier.get());
+        });
+  }
 
-    /** Runs the elevator to and holds at the supplied height. */
-    public Command runGoalPositionCommandFactory(Supplier<Distance> heightSupplier) {
-        return this.run(
-                () -> {
-                    setGoalPosition(heightSupplier.get());
-                });
-    }
+  /** Runs the elevator to and holds at the supplied height. */
+  public Command runGoalPositionCommandFactory(Supplier<Distance> heightSupplier) {
+    return this.run(
+        () -> {
+          setGoalPosition(heightSupplier.get());
+        });
+  }
 
-    // Velocity methods
+  // Velocity methods
 
-    /** Runs the elevator to and holds at the supplied velocity. */
-    public void setGoalVelocity(LinearVelocity velocity) {
-        profile =
-                new TrapezoidProfile(
-                        new TrapezoidProfile.Constraints(
-                                maxVelocity.in(MetersPerSecond),
-                                maxAcceleration.in(MetersPerSecondPerSecond)));
-        TrapezoidProfile.State nextState =
-                calculateNextState(
-                        new TrapezoidProfile.State(
-                                velocity.in(MetersPerSecond) >= 0
-                                        ? maxPosition.in(Meters)
-                                        : minPosition.in(Meters),
-                                velocity.in(MetersPerSecond)));
-        io.setNextState(Meters.of(nextState.position), MetersPerSecond.of(nextState.velocity));
-    }
+  /** Runs the elevator to and holds at the supplied velocity. */
+  public void setGoalVelocity(LinearVelocity velocity) {
+    profile =
+        new TrapezoidProfile(
+            new TrapezoidProfile.Constraints(
+                maxVelocity.in(MetersPerSecond), maxAcceleration.in(MetersPerSecondPerSecond)));
+    TrapezoidProfile.State nextState =
+        calculateNextState(
+            new TrapezoidProfile.State(
+                velocity.in(MetersPerSecond) >= 0 ? maxPosition.in(Meters) : minPosition.in(Meters),
+                velocity.in(MetersPerSecond)));
+    io.setNextState(Meters.of(nextState.position), MetersPerSecond.of(nextState.velocity));
+  }
 
-    /** Runs the elevator to and holds at the supplied velocity. */
-    public Command setGoalVelocityCommandFactory(Supplier<LinearVelocity> velocitySupplier) {
-        return this.runOnce(
-                () -> {
-                    setGoalVelocity(velocitySupplier.get());
-                });
-    }
+  /** Runs the elevator to and holds at the supplied velocity. */
+  public Command setGoalVelocityCommandFactory(Supplier<LinearVelocity> velocitySupplier) {
+    return this.runOnce(
+        () -> {
+          setGoalVelocity(velocitySupplier.get());
+        });
+  }
 
-    /** Runs the elevator to and holds at the supplied velocity. */
-    public Command runGoalVelocityCommandFactory(Supplier<LinearVelocity> velocitySupplier) {
-        return this.run(
-                () -> {
-                    setGoalVelocity(velocitySupplier.get());
-                });
-    }
+  /** Runs the elevator to and holds at the supplied velocity. */
+  public Command runGoalVelocityCommandFactory(Supplier<LinearVelocity> velocitySupplier) {
+    return this.run(
+        () -> {
+          setGoalVelocity(velocitySupplier.get());
+        });
+  }
 
-    /** Sets voltage of both motors to 0. */
-    public void stop() {
-        this.getCurrentCommand().cancel();
-        this.startEnd(() -> setVoltage(Volts.of(0)), () -> {}).schedule();
-    }
+  /** Sets voltage of both motors to 0. */
+  public void stop() {
+    this.getCurrentCommand().cancel();
+    this.startEnd(() -> setVoltage(Volts.of(0)), () -> {}).schedule();
+  }
 
-    /** Returns the inputs of the elevator mechanism. */
-    public ElevatorIOInputs getMotorInputs() {
-        return ioInputs;
-    }
+  /** Returns the inputs of the elevator mechanism. */
+  public ElevatorIOInputs getMotorInputs() {
+    return ioInputs;
+  }
 
-    private TrapezoidProfile.State calculateNextState(TrapezoidProfile.State goalState) {
-        return profile.calculate(
-                0.02,
-                new TrapezoidProfile.State(
-                        ioInputs.mechanismHeight.in(Meters),
-                        ioInputs.mechanismVelocity.in(MetersPerSecond)),
-                goalState);
-    }
+  private TrapezoidProfile.State calculateNextState(TrapezoidProfile.State goalState) {
+    return profile.calculate(
+        0.02,
+        new TrapezoidProfile.State(
+            ioInputs.mechanismHeight.in(Meters), ioInputs.mechanismVelocity.in(MetersPerSecond)),
+        goalState);
+  }
 }

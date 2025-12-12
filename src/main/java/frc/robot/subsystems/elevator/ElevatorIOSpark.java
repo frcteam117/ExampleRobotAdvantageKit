@@ -33,53 +33,53 @@ import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.units.measure.Voltage;
 
 public class ElevatorIOSpark implements ElevatorIO {
-    // Sparkmax objects
-    private SparkMax leadingSpark = new SparkMax(LeaderCanId, MotorType.kBrushless);
-    private SparkMax followingSpark = new SparkMax(FollowerCanId, MotorType.kBrushless);
-    private RelativeEncoder encoder = leadingSpark.getEncoder();
+  // Sparkmax objects
+  private SparkMax leadingSpark = new SparkMax(LeaderCanId, MotorType.kBrushless);
+  private SparkMax followingSpark = new SparkMax(FollowerCanId, MotorType.kBrushless);
+  private RelativeEncoder encoder = leadingSpark.getEncoder();
 
-    // Motion profiling
-    private ElevatorFeedforward feedforward =
-            new ElevatorFeedforward(realS, realG, realV, realA, 0.02);
-    private PIDController pid = new PIDController(realP, realI, realD);
+  // Motion profiling
+  private ElevatorFeedforward feedforward =
+      new ElevatorFeedforward(realS, realG, realV, realA, 0.02);
+  private PIDController pid = new PIDController(realP, realI, realD);
 
-    public ElevatorIOSpark() {
-        leadingSpark.configure(
-                motorConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-        followingSpark.configure(
-                motorConfig.follow(leadingSpark, true),
-                ResetMode.kResetSafeParameters,
-                PersistMode.kPersistParameters);
-    }
+  public ElevatorIOSpark() {
+    leadingSpark.configure(
+        motorConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    followingSpark.configure(
+        motorConfig.follow(leadingSpark, true),
+        ResetMode.kResetSafeParameters,
+        PersistMode.kPersistParameters);
+  }
 
-    // Variables
-    private double lastNextPositionMeters;
+  // Variables
+  private double lastNextPositionMeters;
 
-    @Override
-    public void updateInputs(ElevatorIOInputs ioInputs) {
-        ioInputs.rotorAngle = Rotations.of(encoder.getPosition());
-        ioInputs.rotorVelocity = RotationsPerSecond.of(encoder.getVelocity());
-        ioInputs.mechanismHeight = Meters.of(encoder.getPosition() / rotationsperMeter);
-        ioInputs.mechanismVelocity = MetersPerSecond.of(encoder.getVelocity() / rotationsperMeter);
+  @Override
+  public void updateInputs(ElevatorIOInputs ioInputs) {
+    ioInputs.rotorAngle = Rotations.of(encoder.getPosition());
+    ioInputs.rotorVelocity = RotationsPerSecond.of(encoder.getVelocity());
+    ioInputs.mechanismHeight = (Distance) ioInputs.rotorAngle.divideRatio(gearRatio);
+    ioInputs.mechanismVelocity =
+        (LinearVelocity) ioInputs.rotorVelocity.divideRatio(velocityGearRatio);
 
-        ioInputs.motorVoltage =
-                Volts.of(leadingSpark.getBusVoltage() * leadingSpark.getAppliedOutput());
-        ioInputs.statorCurrent = Amps.of(leadingSpark.getOutputCurrent());
-        ioInputs.supplyCurrent = ioInputs.statorCurrent.times(ioInputs.motorVoltage.in(Volts) / 12.0);
-    }
+    ioInputs.motorVoltage =
+        Volts.of(leadingSpark.getBusVoltage() * leadingSpark.getAppliedOutput());
+    ioInputs.statorCurrent = Amps.of(leadingSpark.getOutputCurrent());
+    ioInputs.supplyCurrent = ioInputs.statorCurrent.times(ioInputs.motorVoltage.in(Volts) / 12.0);
+  }
 
-    @Override
-    public void setVoltage(Voltage voltage) {
-        leadingSpark.setVoltage(voltage.in(Volts));
-        lastNextPositionMeters = encoder.getPosition();
-    }
+  @Override
+  public void setVoltage(Voltage voltage) {
+    leadingSpark.setVoltage(voltage.in(Volts));
+    lastNextPositionMeters = encoder.getPosition();
+  }
 
-    @Override
-    public void setNextState(Distance nextHeight, LinearVelocity nextVelocity) {
-        leadingSpark.setVoltage(
-                feedforward.calculateWithVelocities(
-                                encoder.getVelocity(), nextVelocity.in(MetersPerSecond))
-                        + pid.calculate(encoder.getPosition(), lastNextPositionMeters));
-        lastNextPositionMeters = nextHeight.in(Meters);
-    }
+  @Override
+  public void setNextState(Distance nextHeight, LinearVelocity nextVelocity) {
+    leadingSpark.setVoltage(
+        feedforward.calculateWithVelocities(encoder.getVelocity(), nextVelocity.in(MetersPerSecond))
+            + pid.calculate(encoder.getPosition(), lastNextPositionMeters));
+    lastNextPositionMeters = nextHeight.in(Meters);
+  }
 }
