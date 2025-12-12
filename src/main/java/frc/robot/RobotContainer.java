@@ -4,9 +4,6 @@
 
 package frc.robot;
 
-import static edu.wpi.first.units.Units.Meters;
-import static edu.wpi.first.units.Units.MetersPerSecond;
-
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -55,15 +52,10 @@ public class RobotContainer {
    * edu.wpi.first.wpilibj2.command.button.JoystickButton}.
    */
   private void configureBindings() {
-    driverController
-        .button(1)
-        .whileTrue(elevator.runGoalPositionCommandFactory(() -> Meters.of(1)));
-    driverController
-        .button(4)
-        .whileTrue(elevator.runGoalVelocityCommandFactory(() -> MetersPerSecond.of(1)));
+    driverController.button(1).whileTrue(elevator.runGoalPositionCommandFactory(() -> 1));
+    driverController.button(4).whileTrue(elevator.runGoalVelocityCommandFactory(() -> 1));
     elevator.setDefaultCommand(
-        elevator.runGoalPositionCommandFactory(
-            () -> Meters.of(1.5 + 1.5 * driverController.getRawAxis(0))));
+        elevator.runGoalPositionCommandFactory(() -> 1.5 + 1.5 * driverController.getRawAxis(0)));
   }
 
   /**

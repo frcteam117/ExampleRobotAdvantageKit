@@ -7,9 +7,6 @@ import static edu.wpi.first.units.Units.Rotations;
 import static edu.wpi.first.units.Units.RotationsPerSecond;
 import static edu.wpi.first.units.Units.Volts;
 
-import edu.wpi.first.units.measure.Distance;
-import edu.wpi.first.units.measure.LinearVelocity;
-import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.util.struct.Struct;
 import edu.wpi.first.util.struct.StructSerializable;
 import frc.robot.util.logging.InputsStruct;
@@ -83,14 +80,15 @@ public interface ElevatorIO {
   /**
    * Sets the voltage applied to the elevator's motors in an open loop
    *
-   * @param voltage the voltage applied to the motors
+   * @param voltage_V the voltage applied to the motors
    */
-  default void setVoltage(Voltage voltage) {}
+  default void setVoltage(double voltage_V) {}
 
   /**
    * Sets the voltage based on a feedforard value added to a position pid.
    *
-   * @param nextState the target position and velocity of the elevator in the next timestep
+   * @param nextHeight_m the target position of the elevator in the next timestep
+   * @param nextVelocity_mps the target velocity of the elevator in the next timestep
    */
-  default void setNextState(Distance nextHeight, LinearVelocity nextVelocity) {}
+  default void setNextState(double nextHeight_m, double nextVelocity_mps) {}
 }

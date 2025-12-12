@@ -13,9 +13,6 @@
 
 package frc.robot.subsystems.elevator;
 
-import static edu.wpi.first.units.Units.Meters;
-import static edu.wpi.first.units.Units.MetersPerSecond;
-import static edu.wpi.first.units.Units.Volts;
 import static frc.robot.subsystems.elevator.ElevatorConstants.*;
 
 import com.revrobotics.RelativeEncoder;
@@ -25,9 +22,6 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import edu.wpi.first.math.controller.ElevatorFeedforward;
 import edu.wpi.first.math.controller.PIDController;
-import edu.wpi.first.units.measure.Distance;
-import edu.wpi.first.units.measure.LinearVelocity;
-import edu.wpi.first.units.measure.Voltage;
 
 public class ElevatorIOSpark implements ElevatorIO {
   // Sparkmax objects
@@ -65,16 +59,16 @@ public class ElevatorIOSpark implements ElevatorIO {
   }
 
   @Override
-  public void setVoltage(Voltage voltage) {
-    leadingSpark.setVoltage(voltage.in(Volts));
+  public void setVoltage(double voltage_m) {
+    leadingSpark.setVoltage(voltage_m);
     lastNextPositionMeters = encoder.getPosition();
   }
 
   @Override
-  public void setNextState(Distance nextHeight, LinearVelocity nextVelocity) {
+  public void setNextState(double nextHeight_m, double nextVelocity_mps) {
     leadingSpark.setVoltage(
-        feedforward.calculateWithVelocities(encoder.getVelocity(), nextVelocity.in(MetersPerSecond))
+        feedforward.calculateWithVelocities(encoder.getVelocity(), nextVelocity_mps)
             + pid.calculate(encoder.getPosition(), lastNextPositionMeters));
-    lastNextPositionMeters = nextHeight.in(Meters);
+    lastNextPositionMeters = nextHeight_m;
   }
 }

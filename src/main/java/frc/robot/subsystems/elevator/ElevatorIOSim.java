@@ -13,17 +13,11 @@
 
 package frc.robot.subsystems.elevator;
 
-import static edu.wpi.first.units.Units.Meters;
-import static edu.wpi.first.units.Units.MetersPerSecond;
-import static edu.wpi.first.units.Units.Volts;
 import static frc.robot.subsystems.elevator.ElevatorConstants.*;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.ElevatorFeedforward;
 import edu.wpi.first.math.controller.PIDController;
-import edu.wpi.first.units.measure.Distance;
-import edu.wpi.first.units.measure.LinearVelocity;
-import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj.simulation.ElevatorSim;
 
 public class ElevatorIOSim implements ElevatorIO {
@@ -57,20 +51,19 @@ public class ElevatorIOSim implements ElevatorIO {
   }
 
   @Override
-  public void setVoltage(Voltage voltage) {
-    motorVoltage = MathUtil.clamp(voltage.in(Volts), -12.0, 12.0);
+  public void setVoltage(double voltage_V) {
+    motorVoltage = MathUtil.clamp(voltage_V, -12.0, 12.0);
     lastNextPositionMeters = sim.getPositionMeters();
   }
 
   @Override
-  public void setNextState(Distance nextHeight, LinearVelocity nextVelocity) {
+  public void setNextState(double nextHeight_m, double nextVelocity_mps) {
     motorVoltage =
         MathUtil.clamp(
-            feedforward.calculateWithVelocities(
-                    sim.getVelocityMetersPerSecond(), nextVelocity.in(MetersPerSecond))
+            feedforward.calculateWithVelocities(sim.getVelocityMetersPerSecond(), nextVelocity_mps)
                 + pid.calculate(sim.getPositionMeters(), lastNextPositionMeters),
             -12.0,
             12.0);
-    lastNextPositionMeters = nextHeight.in(Meters);
+    lastNextPositionMeters = nextHeight_m;
   }
 }
